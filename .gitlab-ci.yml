@@ -1,0 +1,106 @@
+image: python:3.7
+
+variables:
+  DOCKER_DRIVER: overlay2
+
+services:
+  - docker:dind
+
+stages:
+  - test
+  - pre-publish
+  - publish
+
+test:lint:
+  stage: test
+  except:
+    - tags
+  script:
+    - pip install tox
+    - make lint
+
+test:code-formatter:
+  stage: test
+  except:
+    - tags
+  script:
+    - pip install tox
+    - make code-formatter-check
+
+test:unit:
+  stage: test
+  except:
+    - tags
+  before_script:
+    - apt update
+    - apt install -y nodejs npm pandoc
+  script:
+    - pip install tox
+    - make tests
+
+test:coverage:
+  stage: test
+  only:
+    - master
+  before_script:
+    - apt update
+    - apt install -y nodejs npm pandoc
+  script:
+    - pip install tox
+    - make coverage
+  coverage: '/^TOTAL.+?(\S+\%)$/'
+
+publish-docker:
+  stage: pre-publish
+  image: docker
+  only:
+    - /^release/.*$/
+  before_script:
+    - apk add python3-dev py3-setuptools
+    - python3 setup.py sdist
+  script:
+    - export VERSION_TAG=$(cat setup.py | grep version | head -1 | awk -F= '{ print $2 }' | sed 's/[",]//g' | tr -d "'")
+    - docker login ${CI_REGISTRY} -u gitlab-ci-token -p ${CI_BUILD_TOKEN}
+    - docker pull ${CI_REGISTRY_IMAGE}:${VERSION_TAG} && echo "Tag ${VERSION_TAG} already exists" && exit 1 || true
+    - docker build -t ${CI_REGISTRY_IMAGE}:latest -t ${CI_REGISTRY_IMAGE}:${VERSION_TAG}  .
+    - docker push ${CI_REGISTRY_IMAGE}:latest
+    - docker push ${CI_REGISTRY_IMAGE}:${VERSION_TAG}
+
+publish-readme:hub:
+  stage: pre-publish
+  only:
+    - /^release/.*$/
+  image:
+    name: registry.gitlab.com/hmajid2301/dockerhub-descriptions-updater
+    entrypoint: [""]
+  variables:
+    DOCKERHUB_USERNAME: hmajid2301
+    DOCKERHUB_PASSWORD: ${DOCKER_PASSWORD}
+    DOCKERHUB_REPO_NAME: markdown-mermaid-to-images
+  script:
+    - pandoc --from rst README.rst --to markdown_strict -o README.md
+    - node /app/index.js
+
+publish_package:staging:
+  stage: pre-publish
+  only:
+    - /^release/.*$/
+  variables:
+    TWINE_USERNAME: $PYPI_STAGING_USERNAME
+    TWINE_PASSWORD: $PYPI_STAGING_PASSWORD
+  script:
+    - pip install tox
+    - make pypi-check
+    - make pypi-upload OPTIONS="-- --repository-url https://test.pypi.org/legacy/"
+
+publish-package:production:
+  stage: publish
+  only:
+    - /^release/.*$/
+  variables:
+    TWINE_USERNAME: $PYPI_PRODUCTION_USERNAME
+    TWINE_PASSWORD: $PYPI_PRODUCTION_PASSWORD
+  script:
+    - pip install tox
+    - make pypi-check
+    - make pypi-upload
