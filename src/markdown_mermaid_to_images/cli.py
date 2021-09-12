@@ -177,7 +177,7 @@ def convert_markdown(markdown_files, output):
 
         file_name = os.path.basename(markdown_file)
         new_file_name = os.path.join(output, file_name)
-        replace_mermaid_blocks_with_images(doc)
+        replace_mermaid_blocks_with_images(doc, output)
         save_new_file(doc, new_file_name)
 
 
@@ -255,7 +255,7 @@ def export_mermaid_blocks(elem, doc, output):
         doc.mermaid[elem.index] = output_name
 
 
-def replace_mermaid_blocks_with_images(doc):
+def replace_mermaid_blocks_with_images(doc, output):
     """Replaces all mermaid code blocks with image blocks. Then saves the markdown content as a new file.
 
     Args:
@@ -266,8 +266,13 @@ def replace_mermaid_blocks_with_images(doc):
     logger.info("Replacing mermaid code blocks with image blocks.")
     for mermaid_block_index, image_path in doc.mermaid.items():
         logger.debug(f"Replacing mermaid block {doc.content.list[mermaid_block_index]}.")
-        image_element = panflute.Para(panflute.Image(panflute.Str("Image"), url=image_path))
+        image_element = panflute.Para(panflute.Image(panflute.Str("Image"), url='attachment://'+output+'/'+image_path))
         doc.content.list[mermaid_block_index] = image_element
+    # need to go forward one more time to add attachments
+    # after replace blocks attaching img to top
+    # TODO: need to add folder via env
+    for _, image_path in doc.mermaid.items():
+        doc.content.list.insert(0, panflute.RawBlock(text=f'<!-- Attachment: {output}/{image_path} -->'))
 
 
 def save_new_file(doc, new_file_name):
@@ -293,3 +298,4 @@ def save_new_file(doc, new_file_name):
 
 if __name__ == "__main__":
     cli(sys.argv[1:])
+# markdown_mermaid_to_images -f input -o output
