@@ -266,7 +266,7 @@ def replace_mermaid_blocks_with_images(doc, output):
     logger.info("Replacing mermaid code blocks with image blocks.")
     for mermaid_block_index, image_path in doc.mermaid.items():
         logger.debug(f"Replacing mermaid block {doc.content.list[mermaid_block_index]}.")
-        image_element = panflute.Para(panflute.Image(panflute.Str("Image"), url='attachment://'+output+'/'+image_path))
+        image_element = panflute.Para(panflute.Image(panflute.Str("Image"), url='attachment://' + output + '/' + image_path))
         doc.content.list[mermaid_block_index] = image_element
     # need to go forward one more time to add attachments
     # after replace blocks attaching img to top
