@@ -17,4 +17,5 @@ class Helpers:
         for file_name in files:
             expected_file = os.path.basename(file_name)
             expected_file_path = os.path.join("tests", "data", "expected", expected_file)
-            assert filecmp.cmp(file_name, expected_file_path)
+            if not filecmp.cmp(file_name, expected_file_path):
+                raise AssertionError
