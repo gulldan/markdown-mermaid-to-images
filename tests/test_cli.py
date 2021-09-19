@@ -19,7 +19,8 @@ from markdown_mermaid_to_images.cli import cli
 )
 def test_fail_args(runner, args, exit_code):
     result = runner.invoke(cli, args)
-    assert result.exit_code == exit_code
+    if result.exit_code != exit_code:
+        raise AssertionError
 
 
 @pytest.mark.parametrize(
@@ -48,7 +49,8 @@ def test_success(mocker, helpers, runner, args):
     ]
     mocker.patch("uuid.uuid4", side_effect=uuid_return)
     result = runner.invoke(cli, args)
-    assert result.exit_code == 0
+    if result.exit_code != 0:
+        raise AssertionError
     helpers.compare_files()
     helpers.remove_files_in_output()
 
@@ -58,18 +60,21 @@ def test_fail_export_images(mocker, runner, exception):
     args = ["-m", "tests/data/example.md", "-o", "tests/data/output"]
     mocker.patch("subprocess.check_output", side_effect=[True, exception])
     result = runner.invoke(cli, args)
-    assert result.exit_code == 1
+    if result.exit_code != 1:
+        raise AssertionError
 
 
 def test_fail_convert_markdown_to_json(mocker, runner):
     args = ["-m", "tests/data/example.md", "-o", "tests/data/output"]
     mocker.patch("pypandoc.convert_file", side_effect=OSError)
     result = runner.invoke(cli, args)
-    assert result.exit_code == 1
+    if result.exit_code != 1:
+        raise AssertionError
 
 
 def test_fail_convert_json_to_markdown(mocker, runner):
     args = ["-m", "tests/data/example.md", "-o", "tests/data/output"]
     mocker.patch("pypandoc.convert_text", side_effect=OSError)
     result = runner.invoke(cli, args)
-    assert result.exit_code == 1
+    if result.exit_code != 1:
+        raise AssertionError
